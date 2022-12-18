@@ -78,6 +78,10 @@
     .hide {
       display: none;
     }
+
+    #hide-show-btn {
+      margin: 5px;
+    }
   </style>
   <body>
     <div class="table-container">
@@ -155,7 +159,9 @@
       </div>
     </div>
     <div>
-      <button onclick="hideOrShowControl()">Hide / Show Controls</button>
+      <button id="hide-show-btn" onclick="hideOrShowControl()">
+        Hide / Show Controls
+      </button>
     </div>
 
     <script>
