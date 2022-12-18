@@ -110,14 +110,13 @@
         <tbody id="stakedBet-tbody"></tbody>
       </table>
     </div>
+    <hr />
 
     <div class="stake-box">
       <div>
-        <div>Target Profit : <span id="target-profit">5000</span> units</div>
-        <div>
-          Over All Profit : <span id="over-all-profit">5000</span> units
-        </div>
-        <div>Odd : <span>2.0</span></div>
+        <div>Target Profit : <span id="target-profit"></span> units</div>
+        <div>Over All Profit : <span id="over-all-profit"></span> units</div>
+        <div>Odd : <span id="odd">2.0</span></div>
       </div>
 
       <div id="units">units</div>
@@ -173,6 +172,7 @@
       const targetProfit_dom = document.querySelector("#target-profit");
       const processInfo = document.querySelector("#process-info");
       const controls = document.querySelector("#controls");
+      const odd_dom = document.querySelector("#odd");
 
       const databaseName = "can-data";
       let data = getSavedData();
@@ -187,7 +187,7 @@
       let wonBetSlips = data ? data.wonBetSlips : [];
       let lostBetSlips = data ? data.lostBetSlips : [];
       let overAllProfit = data ? data.overAllProfit : 0;
-      let showControl = false;
+      let showControl = true;
 
       function setNextStake() {
         let { firstNumber, lastNumber } = getFirstAndLastItems(units);
@@ -232,20 +232,30 @@
       }
 
       function won() {
+        if (!stakedBet.outcome) {
+          return alert("sorry , no bet staked");
+        }
+
         stakedBet.outcome = "won";
         wonBetSlips.push(stakedBet);
         expiredBetSlips.push(stakedBet);
-        stakedBet = {};
 
         units.shift();
         units.pop();
         overAllProfit = calcOverAllProfit();
+
+        stakedBet = {};
+        stakedBetTbody.innerText = "";
 
         setNextStake();
         render();
       }
 
       function lost() {
+        if (!stakedBet.outcome) {
+          return alert("sorry , no bet staked");
+        }
+
         stakedBet.outcome = "lost";
         let lostAmount = stakedBet.stakedAmount;
         units.push(lostAmount);
@@ -253,6 +263,9 @@
         lostBetSlips.push(stakedBet);
         expiredBetSlips.push(stakedBet);
         overAllProfit = calcOverAllProfit();
+
+        stakedBet = {};
+        stakedBetTbody.innerText = "";
 
         setNextStake();
         render();
@@ -279,23 +292,12 @@
         overAllProfit_dom.innerText = overAllProfit;
         units_dom.innerText = units;
         targetProfit_dom.innerText = getArraySum(initialUnits);
+        odd_dom.innerText = odd;
       }
 
       updateDomValues();
 
       function render() {
-        // display_dom.innerText = JSON.stringify({
-        //   initialOdd,
-        //   odd,
-        //   initialUnits,
-        //   units,
-        //   nextStake,
-        //   stakedBet,
-        //   expiredBetSlips,
-        //   wonBetSlips,
-        //   lostBetSlips,
-        // });
-
         renderExpiredBets();
         renderStakedBetTable();
         updateDomValues();
@@ -324,12 +326,16 @@
         if (stakedBet.outcome) {
           stakedBetTbody.innerHTML = "";
 
-          let content = `<tr>
+          let content = "";
+
+          if (stakedBet.outcome) {
+            content = `<tr>
                 <td>${1}</td>
                 <td>${stakedBet.stakedAmount}</td>
                 <td>${stakedBet.odd}</td>
                 <td>${stakedBet.outcome}</td>
               </tr>`;
+          }
 
           stakedBetTbody.innerHTML = content;
         }
@@ -355,10 +361,12 @@
         });
 
         initialUnits = userInitialUnits;
+        units = initialUnits;
 
         render();
         saveData();
         alert("success");
+        location.reload();
       }
 
       function hideOrShowControl() {
@@ -391,6 +399,7 @@
           wonBetSlips,
           lostBetSlips,
           overAllProfit,
+          showControl,
         };
         data = JSON.stringify(data);
         localStorage.setItem(databaseName, data);
