@@ -1,0 +1,482 @@
+<!-- @format -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="./axios.min.js"></script>
+  </head>
+  <style>
+    * {
+      text-align: center;
+    }
+
+    #units {
+      font-size: 2rem;
+      color: steelblue;
+    }
+
+    #next-stake-amount {
+      font-size: 1.3rem;
+      color: steelblue;
+    }
+
+    table {
+      text-align: center;
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .form-element {
+      margin-bottom: 10px;
+    }
+
+    .submitBtn {
+      margin: 5px;
+    }
+
+    #stake-btn {
+      margin-bottom: 15px;
+      width: 150px;
+    }
+
+    #won-btn {
+      background: rgb(13, 106, 13);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 5%;
+      margin-right: 15px;
+    }
+
+    #won-btn:hover {
+      background: rgb(19, 186, 19);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 5%;
+      margin-right: 15px;
+    }
+
+    #lost-btn {
+      background: rgb(213, 85, 85);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 5%;
+      margin-right: 15px;
+    }
+
+    #lost-btn:hover {
+      background: rgb(186, 19, 19);
+      color: #ffffff;
+      padding: 10px;
+      border-radius: 5%;
+      margin-right: 15px;
+    }
+
+    .hide {
+      display: none;
+    }
+  </style>
+  <body>
+    <div class="table-container">
+      <h3 class="table-heading">Expired BetSlips</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Game#</th>
+            <th>Stake</th>
+            <th>Odd</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="expired-bet-slips-tbody"></tbody>
+      </table>
+    </div>
+    <hr />
+
+    <div class="table-container">
+      <h3 class="table-heading">Staked BetSlip Game</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Game#</th>
+            <th>Stake</th>
+            <th>Odd</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody id="stakedBet-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="stake-box">
+      <div>
+        <div>Target Profit : <span id="target-profit">5000</span> units</div>
+        <div>
+          Over All Profit : <span id="over-all-profit">5000</span> units
+        </div>
+        <div>Odd : <span>2.0</span></div>
+      </div>
+
+      <div id="units">units</div>
+      <div>NextStake Amount : <span id="next-stake-amount">0</span></div>
+
+      <button id="stake-btn" onclick="stakeBet()">stake</button>
+      <div id="outcome-btns">
+        <button id="won-btn" onclick="won()">won</button>
+        <button id="lost-btn" onclick="lost()">lost</button>
+      </div>
+    </div>
+
+    <hr />
+    <div id="controls">
+      Controls
+      <div id="display"></div>
+
+      <div class="form-element">
+        selet your initial units <br />
+        <input id="initialUnits-input" type="text" placeholder="1,2,3,4" />
+      </div>
+
+      <div class="form-element">
+        selet your initial odd <br />
+        <input id="initialOdd-input" type="text" placeholder="2.0" />
+      </div>
+
+      <div class="submitBtn">
+        <button onclick="setInitialValues()">set initial values</button>
+      </div>
+      <div id="process-info">processInfo</div>
+      <div class="xtra-features">
+        <button onclick="saveOnline()">save data online</button>
+        <button onclick="syncToLocal()">Sync to Local</button>
+        <button onclick="resetApp()">reset app</button>
+      </div>
+    </div>
+    <div>
+      <button onclick="hideOrShowControl()">Hide / Show Controls</button>
+    </div>
+
+    <script>
+      const display_dom = document.querySelector("#display");
+      const expiredbetsTbody = document.querySelector(
+        "#expired-bet-slips-tbody"
+      );
+      const initialUnitsInput = document.querySelector("#initialUnits-input");
+      const initialOddInput = document.querySelector("#initialOdd-input");
+      const stakedBetTbody = document.querySelector("#stakedBet-tbody");
+      const nextStakeAmount_dom = document.querySelector("#next-stake-amount");
+      const overAllProfit_dom = document.querySelector("#over-all-profit");
+      const units_dom = document.querySelector("#units");
+      const targetProfit_dom = document.querySelector("#target-profit");
+      const processInfo = document.querySelector("#process-info");
+      const controls = document.querySelector("#controls");
+
+      const databaseName = "can-data";
+      let data = getSavedData();
+
+      let initialOdd = data ? data.initialOdd : 2;
+      let odd = data ? data.odd : initialOdd;
+      let initialUnits = data ? data.initialUnits : [1, 2, 3];
+      let units = data ? data.units : [...initialUnits];
+      let nextStake = data ? data.nextStake : 0;
+      let stakedBet = data ? data.stakedBet : {};
+      let expiredBetSlips = data ? data.expiredBetSlips : [];
+      let wonBetSlips = data ? data.wonBetSlips : [];
+      let lostBetSlips = data ? data.lostBetSlips : [];
+      let overAllProfit = data ? data.overAllProfit : 0;
+      let showControl = false;
+
+      function setNextStake() {
+        let { firstNumber, lastNumber } = getFirstAndLastItems(units);
+
+        nextStake = (firstNumber + lastNumber) / (odd - 1);
+
+        render();
+      }
+
+      setNextStake();
+
+      function stakeBet() {
+        setNextStake();
+
+        stakedBet = {
+          stakedAmount: nextStake,
+          odd,
+          outcome: "pending",
+        };
+
+        render();
+      }
+
+      function calcOverAllProfit() {
+        let sumOfWonStakes = getTotalStakedAmounts(wonBetSlips);
+        let sumOfLostStakes = getTotalStakedAmounts(lostBetSlips);
+        let totalStakes = sumOfWonStakes + sumOfLostStakes;
+        // console.log(odd, sumOfLostStakes, sumOfWonStakes);
+        let profit = odd * sumOfWonStakes - totalStakes;
+        return profit;
+      }
+
+      function getTotalStakedAmounts(stakeBetSlips) {
+        stakeBetSlips = [...stakeBetSlips];
+        let sum = 0;
+
+        stakeBetSlips.forEach((stakeBetSlip) => {
+          sum += stakeBetSlip.stakedAmount;
+        });
+
+        return sum;
+      }
+
+      function won() {
+        stakedBet.outcome = "won";
+        wonBetSlips.push(stakedBet);
+        expiredBetSlips.push(stakedBet);
+        stakedBet = {};
+
+        units.shift();
+        units.pop();
+        overAllProfit = calcOverAllProfit();
+
+        setNextStake();
+        render();
+      }
+
+      function lost() {
+        stakedBet.outcome = "lost";
+        let lostAmount = stakedBet.stakedAmount;
+        units.push(lostAmount);
+
+        lostBetSlips.push(stakedBet);
+        expiredBetSlips.push(stakedBet);
+        overAllProfit = calcOverAllProfit();
+
+        setNextStake();
+        render();
+      }
+
+      function getFirstAndLastItems(arr) {
+        let arrCopy = [...arr];
+
+        if (arrCopy.length > 1) {
+          let firstNumber = arrCopy.shift();
+          let lastNumber = arrCopy.pop();
+          return { firstNumber, lastNumber };
+        }
+
+        if (arrCopy.length == 1) {
+          return { firstNumber: arrCopy[0], lastNumber: 0 };
+        }
+
+        return { firstNumber: 0, lastNumber: 0 };
+      }
+
+      function updateDomValues() {
+        nextStakeAmount_dom.innerText = nextStake;
+        overAllProfit_dom.innerText = overAllProfit;
+        units_dom.innerText = units;
+        targetProfit_dom.innerText = getArraySum(initialUnits);
+      }
+
+      updateDomValues();
+
+      function render() {
+        // display_dom.innerText = JSON.stringify({
+        //   initialOdd,
+        //   odd,
+        //   initialUnits,
+        //   units,
+        //   nextStake,
+        //   stakedBet,
+        //   expiredBetSlips,
+        //   wonBetSlips,
+        //   lostBetSlips,
+        // });
+
+        renderExpiredBets();
+        renderStakedBetTable();
+        updateDomValues();
+        saveData();
+      }
+      render();
+
+      function renderExpiredBets() {
+        expiredbetsTbody.innerHTML = "";
+
+        let content = "";
+        content = expiredBetSlips.map((expiredBetSlip) => {
+          return `<tr>
+                        <td>${1}</td>
+                        <td>${expiredBetSlip.stakedAmount}</td>
+                        <td>${expiredBetSlip.odd}</td>
+                        <td>${expiredBetSlip.outcome}</td>
+                      </tr>`;
+        });
+        content = content.join("");
+
+        expiredbetsTbody.innerHTML = content;
+      }
+
+      function renderStakedBetTable() {
+        if (stakedBet.outcome) {
+          stakedBetTbody.innerHTML = "";
+
+          let content = `<tr>
+                <td>${1}</td>
+                <td>${stakedBet.stakedAmount}</td>
+                <td>${stakedBet.odd}</td>
+                <td>${stakedBet.outcome}</td>
+              </tr>`;
+
+          stakedBetTbody.innerHTML = content;
+        }
+      }
+
+      function setInitialValues() {
+        if (expiredBetSlips.length > 0) {
+          alert("can't set new initial values, target profit not achieved");
+          return;
+        }
+        let userInitialOdd = initialOddInput.value.trim() * 1;
+        initialOdd = userInitialOdd;
+        odd = initialOdd;
+
+        let userInitialUnits = initialUnitsInput.value.split(",");
+
+        if (isNaN(userInitialOdd)) {
+          return alert("bad odd input");
+        }
+
+        userInitialUnits = userInitialUnits.map((value) => {
+          return value * 1;
+        });
+
+        initialUnits = userInitialUnits;
+
+        render();
+        saveData();
+        alert("success");
+      }
+
+      function hideOrShowControl() {
+        showControl = !showControl;
+        if (showControl == false) {
+          controls.classList.add("hide");
+        } else {
+          controls.classList.remove("hide");
+        }
+      }
+
+      function getArraySum(arr) {
+        arr = [...arr];
+        let sum = 0;
+        arr.forEach((el) => {
+          sum += el;
+        });
+        return sum;
+      }
+
+      function saveData() {
+        let data = {
+          initialOdd,
+          odd,
+          initialUnits,
+          units,
+          nextStake,
+          stakedBet,
+          expiredBetSlips,
+          wonBetSlips,
+          lostBetSlips,
+          overAllProfit,
+        };
+        data = JSON.stringify(data);
+        localStorage.setItem(databaseName, data);
+      }
+
+      function getSavedData() {
+        let data = localStorage.getItem(databaseName);
+        data = JSON.parse(data);
+
+        if (!(data == "undefined")) {
+          return data;
+        } else {
+          return undefined;
+        }
+      }
+
+      function resetApp() {
+        localStorage.removeItem(databaseName);
+        location.reload();
+      }
+
+      async function saveOnline() {
+        const confirm = prompt(
+          "if you really want to SAVE_DATA_TO_ONLINE , types 'yes"
+        ).trim();
+        if (confirm == "" || confirm != "yes") {
+          return (processInfo.innerText = "operation aborted");
+        }
+
+        processInfo.innerText = "saving... data online";
+        const url = "https://online-storage.up.railway.app/api/v1/data/";
+        const config = {
+          url,
+          data: {
+            id: "databaseName",
+            name: "data",
+            value: localStorage.getItem("databaseName"),
+          },
+          method: "POST",
+        };
+
+        try {
+          const response = await axios(config);
+          const data = response.data;
+
+          processInfo.innerText = "synced to online database";
+        } catch (error) {
+          if (error.request) {
+            processInfo.innerText = "no internet connection";
+          }
+
+          processInfo.innerText = error.message;
+        }
+      }
+
+      // saveOnline();
+
+      async function syncToLocal() {
+        const confirm = prompt(
+          "if you really want to SyncToLocalStorage , types 'yes"
+        ).trim();
+        if (confirm == "" || confirm != "yes") {
+          return (processInfo.innerText = "operation aborted");
+        }
+
+        processInfo.innerText = "Sync... to local";
+        const url =
+          "https://online-storage.up.railway.app/api/v1/data/databaseName";
+
+        try {
+          const response = await axios.get(url);
+          let data = response.data;
+
+          data = data.data.value;
+          localStorage.setItem("databaseName", data);
+
+          processInfo.innerText = "Synced to local";
+        } catch (error) {
+          if (error.request) {
+            processInfo.innerText = "no internet connection";
+            return;
+          }
+
+          processInfo.innerText = error.message;
+        }
+      }
+    </script>
+  </body>
+</html>
