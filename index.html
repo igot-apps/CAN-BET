@@ -180,7 +180,6 @@
       const controls = document.querySelector("#controls");
       const odd_dom = document.querySelector("#odd");
 
-      const databaseName = "can-data";
       let data = getSavedData();
 
       let initialOdd = data ? data.initialOdd : 2;
@@ -408,11 +407,11 @@
           showControl,
         };
         data = JSON.stringify(data);
-        localStorage.setItem(databaseName, data);
+        localStorage.setItem("canData", data);
       }
 
       function getSavedData() {
-        let data = localStorage.getItem(databaseName);
+        let data = localStorage.getItem("canData");
         data = JSON.parse(data);
 
         if (!(data == "undefined")) {
@@ -423,7 +422,7 @@
       }
 
       function resetApp() {
-        localStorage.removeItem(databaseName);
+        localStorage.removeItem("canData");
         location.reload();
       }
 
@@ -440,9 +439,9 @@
         const config = {
           url,
           data: {
-            id: "databaseName",
-            name: "data",
-            value: localStorage.getItem("databaseName"),
+            id: "canData",
+            name: "canData",
+            value: localStorage.getItem("canData"),
           },
           method: "POST",
         };
@@ -472,15 +471,15 @@
         }
 
         processInfo.innerText = "Sync... to local";
-        const url =
-          "https://online-storage.up.railway.app/api/v1/data/databaseName";
+        const url = "https://online-storage.up.railway.app/api/v1/data/canData";
 
         try {
           const response = await axios.get(url);
           let data = response.data;
 
           data = data.data.value;
-          localStorage.setItem("databaseName", data);
+          console.log(data);
+          localStorage.setItem("canData", data);
 
           processInfo.innerText = "Synced to local";
         } catch (error) {
